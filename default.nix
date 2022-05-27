@@ -1,5 +1,15 @@
 { pkgs ? import <nixpkgs> {}}:
 let
+    HASH_LENGTH = 32;
+    cleanName = name: 
+        let 
+            base = baseNameOf name;
+            baseLength = builtins.stringLength base; in
+        if baseLength > HASH_LENGTH + 1
+        then builtins.unsafeDiscardStringContext (
+            builtins.substring (HASH_LENGTH + 1) (baseLength - HASH_LENGTH - 1) base
+        ) else base;
+
     link = { name, inputs, args ? []}: derivation {
         inherit (pkgs) system;
         inherit name;
@@ -8,10 +18,11 @@ let
             "-o"
             (placeholder "out")
         ]  ++ inputs ++ args;
+        # PATH = "${pkgs.darwin.cctools}/bin";
     };
 
     cc = { input, args ? [] }: link {
-        name = "${baseNameOf input}.o";
+        name = "${cleanName input}.o";
         inputs = [ input ];
         args = [ "-c" ] ++ args;
     };
@@ -20,7 +31,7 @@ let
 
     generate = { input }: derivation {
         inherit (pkgs) system;
-        name = "${baseNameOf input}.c";
+        name = "${cleanName input}.c";
         builder = generator-bin;
         args = [
             input
